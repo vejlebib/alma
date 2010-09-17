@@ -33,7 +33,7 @@ Drupal.almaAvailability.get_details = function (callback) {
   }
 
   if (Drupal.almaAvailability.id_list.length > 0) {
-    $.getJSON(Drupal.settings.basePath + 'alma/item/' + Drupal.almaAvailability.id_list.join(',') + '/details', {}, callback);
+    $.getJSON(Drupal.settings.alma.basePath + 'alma/item/' + Drupal.almaAvailability.id_list.join(',') + '/details', {}, callback);
   }
 };
 
@@ -50,7 +50,7 @@ Drupal.almaAvailability.get_availability = function (callback) {
   }
 
   if (Drupal.almaAvailability.id_list.length > 0) {
-    $.getJSON(Drupal.settings.basePath + 'alma/item/' + Drupal.almaAvailability.id_list.join(',') + '/availability', {}, callback);
+    $.getJSON(Drupal.settings.alma.basePath + 'alma/item/' + Drupal.almaAvailability.id_list.join(',') + '/availability', {}, callback);
   }
 };
 

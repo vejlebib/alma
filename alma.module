@@ -47,6 +47,11 @@ function alma_menu() {
   return $items;
 }
 
+function alma_init() {
+	$alma_base_path = (module_exists('trampoline')) ? trampoline_url() : url();
+	drupal_add_js(array('alma' => array('basePath' => $alma_base_path)), 'setting');
+}
+
 /**
  * Implementation of hook_flush_caches().
  */
@@ -71,6 +76,18 @@ function alma_requirements($phase) {
   }
 
   return $requirements;
+}
+
+/**
+ * Implementation of hook_trampoline().
+ */
+function alma_trampoline() {
+  $items = array();
+
+  $items['alma/item/%/availability'] = TRUE;
+  $items['alma/item/%/details'] = TRUE;
+
+  return $items;
 }
 
 /**
