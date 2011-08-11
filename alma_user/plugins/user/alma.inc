@@ -144,11 +144,28 @@ function alma_user_user_settings_form() {
 function alma_user_user_library_settings_form(&$form_state, $account) {
   $creds = ding_library_user_get_credentials($account);
   $info = alma_client_invoke('get_patron_info', $creds['user_id'], $creds['password'], TRUE);
+  
+  //get settings for types of messages
+  $messageservices_defaults = array();
+  if (isset($info['message_services']['due_date_alert']['sms'])) {
+    $messageservices_defaults['due_date_alert_sms'] = 'due_date_alert_sms';
+  }
+  if (isset($info['message_services']['due_date_alert']['email'])) {
+    $messageservices_defaults['due_date_alert_email'] = 'due_date_alert_email';
+  }
+  
   $form['account'] = array(
     '#type' => 'value',
     '#value' => $account,
   );
 
+  $form['preferred_branch'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Preferred library'),
+    '#options'       => alma_client_invoke('get_reservation_branches'),
+    '#default_value' => $account->preferred_branch,
+  );
+  
   $form['preferred_branch'] = array(
     '#type'          => 'select',
     '#title'         => t('Preferred library'),
@@ -184,12 +201,23 @@ function alma_user_user_library_settings_form(&$form_state, $account) {
     '#default_value' => (isset($info['absent_periods'][0])) ? $info['absent_periods'][0]['to_date'] : '',
   );
 
+  $form['message_services'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Message Services'),
+    '#description' => t('Subscribe/unsubscribe to message services from the library.<br/><em>Due Date Alerts</em> notify you 3 days before you have to return your loan(s).<br/>Note that you pay <strong>2 kr. per SMS or email</strong> sent to you from these services.'),
+    '#options' => array(
+      'due_date_alert_sms' => t('Due Date Alerts as a SMS'),
+      'due_date_alert_email' => t('Due Date Alerts as an E-mail'),
+    ),
+    '#default_value' => $messageservices_defaults,
+  );
+  
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Update'),
     '#weight' => 50,
   );
-
+  
   return $form;
 }
 
@@ -251,9 +279,51 @@ function alma_user_user_library_settings_form_submit($form, &$form_state) {
     // And save the new choice to Alma.
     alma_client_invoke('change_patron_preferences', $creds['user_id'], $creds['password'], $form_state['values']['preferred_branch']);
   }
+  
   if ($form_state['values']['interest_period'] != $form_state['values']['account']->interest_period) {
     $updates['interest_period'] = $form_state['values']['interest_period'];
   }
+
+  if ( (bool)$form_state['values']['message_services']['due_date_alert_sms'] != isset($info['message_services']['due_date_alert']['sms'])) {
+    // Update the preferences for SMS message service, IF user has a mobile number
+    if ( (bool)$form_state['values']['message_services']['due_date_alert_sms'] == 1 && isset($info['phones'][0]['phone'])) {
+      // Save the new SMS choice to Alma. If user want to add it, add it ..
+      alma_client_invoke('add_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_SMS, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
+      
+      // Update local user settings accordingly
+      $account->message_services = array(
+        ALMA_SERVICE_METHOD_SMS => array(
+          ALMA_SERVICE_TYPE_DUE_DATE_ALERT => 1
+        )
+      );
+      
+      drupal_set_message(t("You have subscribed to Due Date Alerts per SMS. You will receive a SMS with a Due Date Alert 3 days before you have to return your loan(s). Note that you pay 2 kr. per Due Date Alert-SMS sent to you."));
+    
+    } else {
+      // .. if user dont want it, remove it
+      alma_client_invoke('remove_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_SMS, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
+      
+      // Update local user settings accordingly
+      unset($account->message_services[ALMA_SERVICE_METHOD_SMS]);
+              
+      drupal_set_message(t("You have unsubscribed Due Date Alerts per SMS."));
+    }
+  } 
+
+  if ( (bool)$form_state['values']['message_services']['due_date_alert_email'] != isset($info['message_services']['due_date_alert']['email'])) {
+    // Update the preferences for E-mail message service
+    if ( (bool)$form_state['values']['message_services']['due_date_alert_email'] == 1) {
+      // Save the new Email choice to Alma. If user want to add it, add it ..
+      alma_client_invoke('add_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_EMAIL, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
+      drupal_set_message(t("You have subscribed to Due Date Alerts per E-mail. You will receive an E-mail with a Due Date Alert 3 days before you have to return your loan(s). Note that you pay 2 kr. per Due Date Alert-email sent to you."));
+    
+    } else {
+      // .. if user dont want it, remove it
+      alma_client_invoke('remove_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_EMAIL, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
+      drupal_set_message(t("You have unsubscribed Due Date Alerts per E-mail."));
+    }
+  } 
+  
   if ($updates) {
     user_save($user, $updates);
   }

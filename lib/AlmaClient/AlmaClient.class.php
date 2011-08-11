@@ -9,6 +9,7 @@ define('ALMA_SERVICE_TYPE_LIBRARY_MESSAGE', 'libraryMessage');
 define('ALMA_SERVICE_TYPE_OVERDUE_NOTICE', 'overdueNotice');
 define('ALMA_SERVICE_TYPE_PICK_UP_NOTICE', 'pickUpNotice');
 define('ALMA_SERVICE_METHOD_SMS', 'sms');
+define('ALMA_SERVICE_METHOD_EMAIL', 'email');
 
 class AlmaClient {
   /**
@@ -309,7 +310,22 @@ class AlmaClient {
         'to_date' => $period->getAttribute('absentToDate'),
       );
     }
-
+    
+    foreach ($info->getElementsByTagName('messageService') as $msgservice) {
+      $sendmethods = array();
+      $methods = $msgservice->getElementsByTagName('sendMethod');
+      foreach ($methods as $method) {
+      	$sendmethods[$method->getAttribute('value')] = (bool) ($method->getAttribute('isActive') == 'yes');
+      }
+      
+      switch( $msgservice->getAttribute('serviceType') ) {
+        case ALMA_SERVICE_TYPE_DUE_DATE_ALERT:
+          $data['message_services']['due_date_alert'] = $sendmethods;
+          break;
+        default:
+      }
+    }
+    
     return $data;
   }
 

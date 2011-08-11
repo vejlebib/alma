@@ -77,28 +77,12 @@ function alma_user_user($op, &$edit, &$account, $category = NULL) {
             else {
               alma_client_invoke('change_phone_number', $creds['user_id'], $creds['password'], $old_info['phones'][0]['id'], $edit['alma_user_phone']);
             }
-            // If user does not already have a SMS message service then add one
-            if (!isset($account->message_services[ALMA_SERVICE_METHOD_SMS][ALMA_SERVICE_TYPE_DUE_DATE_ALERT]) ||
-              !$account->message_services[ALMA_SERVICE_METHOD_SMS][ALMA_SERVICE_TYPE_DUE_DATE_ALERT]) {
-              // Add a due date alerts as SMS service per default
-              alma_client_invoke('add_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_SMS, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
-
-              // Update local user settings accordingly
-              $account->message_services = array(
-                ALMA_SERVICE_METHOD_SMS => array(
-                  ALMA_SERVICE_TYPE_DUE_DATE_ALERT => 1
-                )
-              );
-            }
+                        
           }
           else {
             if (!empty($old_info['phones'][0]['id'])) {
               alma_client_invoke('remove_phone_number', $creds['user_id'], $creds['password'], $old_info['phones'][0]['id']);
-              // Also remove SMS messaging service
-              alma_client_invoke('remove_message_service', $creds['user_id'], $creds['password'], ALMA_SERVICE_METHOD_SMS, ALMA_SERVICE_TYPE_DUE_DATE_ALERT);
-
-              // Update local user settings accordingly
-              unset($account->message_services[ALMA_SERVICE_METHOD_SMS]);
+                          
             }
           }
 
