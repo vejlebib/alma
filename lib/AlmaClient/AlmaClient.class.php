@@ -824,6 +824,25 @@ class AlmaClient {
   }
 
   /**
+   * Confirm payment of debts.
+   * Path from: https://github.com/Arni/alma/commit/5714b7cc8b69adb0e03a157b6276e66f2a29a092
+   */
+  public function confirm_payment($order_id) {
+    $result = array();
+    if (!empty($order_id)) {
+      $doc = $this->request('patron/payment/confirmation', array("orderId" => $order_id));
+      if ($doc->getElementsByTagName('payments')->length > 0) {
+        $result["success"] = true;
+      } else {
+        $result["success"] = false;
+      }
+      $result["data"] = $doc->saveXML();
+      $result["order_id"] = $order_id;
+    }
+    return $result;
+  }
+
+  /**
    * Change user’s preferred branch.
    *
    * @param string $borr_card

@@ -235,5 +235,29 @@ function alma_user_debt_dibs_add_payment($transaction) {
   }
   else {
     alma_client_invoke('add_payment', implode(',', $transaction['params']['selected_debts']), $transaction['payment_order_id']);
+    $confirmation = alma_client_invoke('confirm_payment', $transaction['payment_order_id']);
+    if ($confirmation['success'] != TRUE) {
+      // payment didn't register. log to db for secondary processing.
+      db_query("UPDATE {dibs_transactions} SET payment_status = 2 WHERE payment_order_id = %d", $transaction['payment_order_id']);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_cron() -
+ * Will do secondary processing of failed payments.
+ */
+function alma_user_cron() {
+  $res = db_query("SELECT payment_order_id,payment_transaction_id,params FROM {dibs_transactions} WHERE payment_status = 2");
+  while ($row = db_fetch_array($res)) {
+    $order_id = $row['payment_order_id'];
+    $params = unserialize($row['params']);
+    alma_client_invoke('add_payment', implode(',', $params['selected_debts']), $order_id);
+    $confirmation = alma_client_invoke('confirm_payment', $order_id);
+    if ($confirmation['success'] != TRUE) {
+      //db_query("UPDATE {dibs_transactions} SET payment_retry_count = payment_retry_count + 1 WHERE payment_order_id = %d", $order_id);
+    } else {
+      db_query("UPDATE {dibs_transactions} SET payment_status = 1 WHERE payment_order_id = %d", $order_id);
+    }
   }
 }
